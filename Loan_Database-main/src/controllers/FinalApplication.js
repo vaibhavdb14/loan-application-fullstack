@@ -134,7 +134,6 @@ export const getApplicationById = async (
     });
   }
 };
-
 // Update application
 export const updateApplication = async (
   req,
@@ -150,6 +149,10 @@ export const updateApplication = async (
           $set: {
             applicantDetails:
               req.body.applicantDetails,
+
+            financialDetails:
+              req.body.financialDetails,
+
             loanDetails:
               req.body.loanDetails,
           },
@@ -185,7 +188,6 @@ export const updateApplication = async (
     });
   }
 };
-
 // Upload multiple documents
 export const addDocuments = async (
   req,
