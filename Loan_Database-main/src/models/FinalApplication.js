@@ -89,6 +89,39 @@ const FinalApplicationSchema = new mongoose.Schema(
       },
     },
 
+    // Financial information
+    financialDetails: {
+      cibilScore: {
+        type: Number,
+        default: null,
+      },
+
+      existingLoans: {
+        type: Number,
+        default: 0,
+      },
+
+      emiObligations: {
+        type: Number,
+        default: 0,
+      },
+
+      creditHistoryYears: {
+        type: Number,
+        default: 0,
+      },
+
+      previousLoanDefaults: {
+        type: Number,
+        default: 0,
+      },
+
+      numberOfDependents: {
+        type: Number,
+        default: 0,
+      },
+    },
+
     // Loan information
     loanDetails: {
       loanAmount: Number,
