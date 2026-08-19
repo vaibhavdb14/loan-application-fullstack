@@ -924,7 +924,37 @@ const NewApplication = () => {
     );
   }
 
-  if (isProcessing) {
+  // if (isProcessing) {
+  //   const pipelineSteps = PIPELINE_STAGES.map((stage) => ({
+  //     key: stage.key,
+  //     label: stage.label,
+  //     status: processingProgress >= stage.threshold ? "complete" : processingProgress > stage.threshold - 15 ? "active" : "idle",
+  //   }));
+
+  //   return (
+  //     <div className="min-h-screen bg-banking-background p-4 sm:p-6 lg:p-8">
+  //       <div className="max-w-3xl mx-auto mt-4 sm:mt-10">
+  //         <div className="bg-banking-card border border-border p-6 sm:p-10 rounded-xl shadow-sm text-center">
+  //           <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-5 sm:mb-6 rounded-full bg-banking-softBlue flex items-center justify-center">
+  //             <div className="w-6 h-6 sm:w-7 sm:h-7 border-[3px] border-banking-primary border-t-transparent rounded-full animate-spin" />
+  //           </div>
+  //           <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">Analyzing Application</h2>
+  //           <div className="w-full bg-gray-200 rounded-full h-2 mb-8 overflow-hidden">
+  //             <div className="bg-banking-primary h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(processingProgress, 100)}%` }} />
+  //           </div>
+  //           <div className="text-sm font-semibold text-banking-primary mb-6">
+  //             {Math.min(processingProgress, 100)}% Complete
+  //           </div>
+  //           <div className="max-w-md mx-auto text-left">
+  //             <ProcessingStatus steps={pipelineSteps} orientation="vertical" />
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+if (isProcessing) {
     const pipelineSteps = PIPELINE_STAGES.map((stage) => ({
       key: stage.key,
       label: stage.label,
@@ -933,27 +963,85 @@ const NewApplication = () => {
 
     return (
       <div className="min-h-screen bg-banking-background p-4 sm:p-6 lg:p-8">
+        
+        {/* CSS for the exact 30-second progress bar animation */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes fillBar30s {
+            0% { width: 0%; }
+            100% { width: 100%; }
+          }
+        `}} />
+
         <div className="max-w-3xl mx-auto mt-4 sm:mt-10">
           <div className="bg-banking-card border border-border p-6 sm:p-10 rounded-xl shadow-sm text-center">
+            
             <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-5 sm:mb-6 rounded-full bg-banking-softBlue flex items-center justify-center">
               <div className="w-6 h-6 sm:w-7 sm:h-7 border-[3px] border-banking-primary border-t-transparent rounded-full animate-spin" />
             </div>
+            
             <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">Analyzing Application</h2>
+            
+            {/* Main Overall Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-2 mb-8 overflow-hidden">
-              <div className="bg-banking-primary h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min(processingProgress, 100)}%` }} />
+              <div 
+                className="bg-banking-primary h-2 rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(processingProgress, 100)}%` }} 
+              />
             </div>
-            <div className="text-sm font-semibold text-banking-primary mb-6">
+            
+            <div className="text-sm font-semibold text-banking-primary mb-8">
               {Math.min(processingProgress, 100)}% Complete
             </div>
-            <div className="max-w-md mx-auto text-left">
-              <ProcessingStatus steps={pipelineSteps} orientation="vertical" />
+
+            {/* Pipeline Steps with 30s Micro-Progress Bars */}
+            <div className="max-w-md mx-auto text-left space-y-5">
+              {pipelineSteps.map((step) => (
+                <div key={step.key} className="flex flex-col">
+                  
+                  {/* Icon & Label */}
+                  <div className="flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${
+                      step.status === 'complete' ? 'bg-banking-success text-white' :
+                      step.status === 'active' ? 'bg-banking-primary text-white' :
+                      'bg-gray-100 border border-gray-300 text-transparent'
+                    }`}>
+                      {step.status === 'complete' && <Check size={14} className="stroke-[3]" />}
+                      {step.status === 'active' && <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />}
+                    </div>
+                    
+                    <span className={`text-sm ${
+                      step.status === 'complete' ? 'text-text-primary font-medium' :
+                      step.status === 'active' ? 'text-banking-primary font-bold' :
+                      'text-text-muted font-medium'
+                    }`}>
+                      {step.label}
+                    </span>
+                  </div>
+
+                  {/* 30-Second Inline Progress Bar */}
+                  <div className="ml-9 mt-2">
+                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                      {step.status === 'complete' && (
+                        <div className="h-full w-full bg-banking-success transition-all duration-300" />
+                      )}
+                      {step.status === 'active' && (
+                        <div 
+                          className="h-full bg-banking-primary rounded-full"
+                          style={{ animation: 'fillBar30s 30s linear forwards' }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              ))}
             </div>
+
           </div>
         </div>
       </div>
     );
   }
-
   /* =========================================================
      MAIN APPLICATION UI
   ========================================================= */
@@ -1044,7 +1132,7 @@ const NewApplication = () => {
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
                     <InputField label="Occupation" name="occupation" placeholder="e.g., Software Engineer" value={formData.occupation} onChange={handleInputChange} required />
-                    <InputField label="Employer" name="employer" placeholder="e.g., Infosys" value={formData.employer} onChange={handleInputChange} required />
+                    <InputField label="Employer" name="employer" placeholder="e.g., Cognizent" value={formData.employer} onChange={handleInputChange} required />
                     <InputField label="Designation" name="designation" placeholder="e.g., Software Engineer" value={formData.designation} onChange={handleInputChange} required />
                     <InputField label="Monthly Income (₹)" name="monthlyIncome" type="number" placeholder="e.g., 68000" value={formData.monthlyIncome} onChange={handleInputChange} required />
                     
