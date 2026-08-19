@@ -92,15 +92,20 @@ const ApplicationDetails = () => {
   if (status === 'error' || !application) return <ProfileErrorState onRetry={() => window.location.reload()} />;
 
   // --- Data Extraction & Mapping ---
-  const { 
-    applicantDetails, 
-    financialDetails, 
-    loanDetails, 
-    documents, 
-    processingStatus, 
-    riskLevel, 
-    verificationScore 
-  } = application;
+  const {
+    applicantDetails,
+    financialDetails,
+    loanDetails,
+    documents,
+    processingStatus,
+    riskLevel,
+    verificationScore,
+    verificationStatus,
+    eligibilityStatus,
+    eligibilityScore,
+    eligibilityReason,
+    digitalProfile
+} = application;
 
   // 1. Dynamic Data combined with Static Placeholders (to match UI exactly)
   const applicant = {
@@ -116,25 +121,25 @@ const ApplicationDetails = () => {
     occupation: applicantDetails?.occupation || 'Not Provided',
     employer: applicantDetails?.employer || 'Not Provided',
     designation: applicantDetails?.designation || 'Not Provided',
-    employmentType: 'Salaried', // Static
-    workExperience: '4 years', // Static
+    employmentType: digitalProfile?.employmentType || "Processing...",
+    workExperience: digitalProfile?.workExperience || "Processing..."
   };
 
   // Calculate static logical assumptions based on dynamic monthly income
   const baseMonthly = applicantDetails?.monthlyIncome || 0;
   const income = {
     monthlyIncome: baseMonthly,
-    annualIncome: baseMonthly * 12,
-    netIncome: baseMonthly * 0.95,
-    taxDeducted: (baseMonthly * 0.05) * 12,
+    annualIncome: digitalProfile?.annualIncome ?? (baseMonthly * 12),
+    netIncome: digitalProfile?.netIncome ?? (baseMonthly * 12 * 0.95), // Assuming 5% tax deduction
+    taxDeducted: digitalProfile?.taxDeducted ?? 0,
   };
 
   const banking = {
-    verified: true,
-    bankName: 'HDFC BANK', // Static
-    accountNumber: 'XXXXXXXXX7890', // Static
-    accountType: 'Savings', // Static
-    averageBalance: 150000, // Static
+    bankName: digitalProfile?.bankName || "Processing...",
+    accountNumber: digitalProfile?.maskedAccountNumber || "Processing...",
+    accountType: digitalProfile?.accountType || "Processing...",
+
+    averageBalance: digitalProfile?.averageBalance || 0
   };
 
   const tax = {
@@ -151,7 +156,7 @@ const ApplicationDetails = () => {
     loanType: loanDetails?.loanType?.replace('_', ' ') || 'Personal Loan',
     loanAmount: loanDetails?.loanAmount || 0,
     loanTenure: `${loanDetails?.tenureMonths || 60} Months`,
-    purpose: 'Home renovation', // Static
+    purpose: digitalProfile?.loanPurpose || "Processing..."
   };
 
   const verification = {

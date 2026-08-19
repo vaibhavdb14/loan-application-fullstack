@@ -44,16 +44,16 @@ const FinalApplicationSchema = new mongoose.Schema(
   {
     // Applicant information
     applicantDetails: {
-      fullName: String,
-      dateOfBirth: String,
-      fatherName: String,
-      panNumber: String,
-      aadhaarNumber: String,
-      occupation: String,
-      employer: String,
-      designation: String,
-      monthlyIncome: Number,
-      address: String,
+      fullName: { type: String, required: true, trim: true },
+      dateOfBirth: { type: String, required: true, trim: true },
+      fatherName: { type: String, required: true, trim: true },
+      panNumber: { type: String, required: true, trim: true },
+      aadhaarNumber: { type: String, required: true, trim: true },
+      occupation: { type: String, required: true, trim: true },
+      employer: { type: String, required: true, trim: true },
+      designation: { type: String, required: true, trim: true },
+      monthlyIncome: { type: Number, required: true, min: 1 },
+      address: { type: String, required: true, trim: true },
     },
 
     // Financial information
@@ -124,10 +124,11 @@ const FinalApplicationSchema = new mongoose.Schema(
 
     // Loan information
     loanDetails: {
-      loanAmount: Number,
+      loanAmount: { type: Number, required: true, min: 1 },
 
       loanType: {
         type: String,
+        required: true,
         enum: [
           "PERSONAL_LOAN",
           "HOME_LOAN",
@@ -137,7 +138,7 @@ const FinalApplicationSchema = new mongoose.Schema(
         ],
       },
 
-      tenureMonths: Number,
+      tenureMonths: { type: Number, required: true, min: 1 },
     },
 
     // Uploaded documents

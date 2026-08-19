@@ -699,10 +699,35 @@ const NewApplication = () => {
   ).length;
   const allDocsComplete = completedDocs === REQUIRED_DOCS.length;
 
+  const requiredFields = [
+    ["fullName", "Full Name"],
+    ["dateOfBirth", "Date of Birth"],
+    ["fatherName", "Father's Name"],
+    ["panNumber", "PAN Number"],
+    ["aadhaarNumber", "Aadhaar Number"],
+    ["address", "Residential Address"],
+    ["occupation", "Occupation"],
+    ["employer", "Employer"],
+    ["designation", "Designation"],
+    ["monthlyIncome", "Monthly Income"],
+    ["loanType", "Loan Type"],
+    ["loanAmount", "Requested Amount"],
+    ["tenureMonths", "Tenure"],
+  ];
+
   /* =========================================================
      PHASE 1: SAVE TEXT DATA & PROCEED
   ========================================================= */
   const saveTextDataAndContinue = async () => {
+    const missingField = requiredFields.find(
+      ([field]) => !String(formData[field]).trim()
+    );
+
+    if (missingField) {
+      showToast(`${missingField[1]} is required.`, "error");
+      return;
+    }
+
     setIsSavingText(true);
 
     // Updated payload to match new Mongoose Schema
@@ -992,13 +1017,13 @@ const NewApplication = () => {
                     A. Applicant Personal Information
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-                    <InputField label="Full Name" name="fullName" placeholder="e.g., Rahul Sharma" value={formData.fullName} onChange={handleInputChange} />
-                    <InputField label="Date of Birth" name="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={handleInputChange} />
-                    <InputField label="Father's Name" name="fatherName" placeholder="e.g., Bikram Sharma" value={formData.fatherName} onChange={handleInputChange} />
-                    <InputField label="PAN Number" name="panNumber" placeholder="e.g., ABCDE1234F" value={formData.panNumber} onChange={handleInputChange} />
-                    <InputField label="Aadhaar Number" name="aadhaarNumber" placeholder="[Aadhaar Redacted]" value={formData.aadhaarNumber} onChange={handleInputChange} />
+                    <InputField label="Full Name" name="fullName" placeholder="e.g., Rahul Sharma" value={formData.fullName} onChange={handleInputChange} required />
+                    <InputField label="Date of Birth" name="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={handleInputChange} required />
+                    <InputField label="Father's Name" name="fatherName" placeholder="e.g., Bikram Sharma" value={formData.fatherName} onChange={handleInputChange} required />
+                    <InputField label="PAN Number" name="panNumber" placeholder="e.g., ABCDE1234F" value={formData.panNumber} onChange={handleInputChange} required />
+                    <InputField label="Aadhaar Number" name="aadhaarNumber" placeholder="[Aadhaar Redacted]" value={formData.aadhaarNumber} onChange={handleInputChange} required />
                     <div className="col-span-1 md:col-span-2">
-                      <label className="block text-sm font-medium text-text-primary mb-1">Residential Address</label>
+                      <label className="block text-sm font-medium text-text-primary mb-1">Residential Address <span className="text-banking-error">*</span></label>
                       <textarea
                         name="address"
                         value={formData.address}
@@ -1006,6 +1031,7 @@ const NewApplication = () => {
                         className="w-full px-4 py-3 sm:py-2 border border-border rounded-md focus:ring-2 focus:ring-banking-primary focus:outline-none text-sm text-text-primary bg-white"
                         rows="3"
                         placeholder="e.g., Mumbai"
+                        required
                       />
                     </div>
                   </div>
@@ -1017,18 +1043,19 @@ const NewApplication = () => {
                     B. Employment & Loan Requirements
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-                    <InputField label="Occupation" name="occupation" placeholder="e.g., Software Engineer" value={formData.occupation} onChange={handleInputChange} />
-                    <InputField label="Employer" name="employer" placeholder="e.g., Infosys" value={formData.employer} onChange={handleInputChange} />
-                    <InputField label="Designation" name="designation" placeholder="e.g., Software Engineer" value={formData.designation} onChange={handleInputChange} />
-                    <InputField label="Monthly Income (₹)" name="monthlyIncome" type="number" placeholder="e.g., 68000" value={formData.monthlyIncome} onChange={handleInputChange} />
+                    <InputField label="Occupation" name="occupation" placeholder="e.g., Software Engineer" value={formData.occupation} onChange={handleInputChange} required />
+                    <InputField label="Employer" name="employer" placeholder="e.g., Infosys" value={formData.employer} onChange={handleInputChange} required />
+                    <InputField label="Designation" name="designation" placeholder="e.g., Software Engineer" value={formData.designation} onChange={handleInputChange} required />
+                    <InputField label="Monthly Income (₹)" name="monthlyIncome" type="number" placeholder="e.g., 68000" value={formData.monthlyIncome} onChange={handleInputChange} required />
                     
                     <div className="col-span-1 md:col-span-2 mt-2">
-                      <label className="block text-sm font-medium text-text-primary mb-1">Loan Type</label>
+                      <label className="block text-sm font-medium text-text-primary mb-1">Loan Type <span className="text-banking-error">*</span></label>
                       <select
                         name="loanType"
                         value={formData.loanType}
                         onChange={handleInputChange}
                         className="w-full px-4 py-3 sm:py-2 border border-border rounded-md focus:ring-2 focus:ring-banking-primary focus:outline-none text-sm text-text-primary bg-white"
+                        required
                       >
                         <option value="">Select a loan type...</option>
                         <option value="Personal Loan">Personal Loan</option>
@@ -1039,8 +1066,8 @@ const NewApplication = () => {
 
                     {formData.loanType && (
                       <>
-                        <InputField label="Requested Amount (₹)" name="loanAmount" type="number" placeholder="e.g., 500000" value={formData.loanAmount} onChange={handleInputChange} />
-                        <InputField label="Tenure (Months)" name="tenureMonths" type="number" placeholder="e.g., 60" value={formData.tenureMonths} onChange={handleInputChange} />
+                        <InputField label="Requested Amount (₹)" name="loanAmount" type="number" placeholder="e.g., 500000" value={formData.loanAmount} onChange={handleInputChange} required />
+                        <InputField label="Tenure (Months)" name="tenureMonths" type="number" placeholder="e.g., 60" value={formData.tenureMonths} onChange={handleInputChange} required />
                       </>
                     )}
                   </div>
@@ -1188,15 +1215,16 @@ const NewApplication = () => {
 /* =========================================================
    REUSABLE INPUT FIELD
 ========================================================= */
-const InputField = ({ label, type = "text", placeholder, name, value, onChange }) => {
+const InputField = ({ label, type = "text", placeholder, name, value, onChange, required = false }) => {
   return (
     <div>
-      <label className="block text-sm font-medium text-text-primary mb-1">{label}</label>
+      <label className="block text-sm font-medium text-text-primary mb-1">{label}{required && <span className="text-banking-error"> *</span>}</label>
       <input
         type={type}
         name={name}
         value={value}
         onChange={onChange}
+        required={required}
         placeholder={placeholder}
         className="w-full px-4 py-3 sm:py-2 border border-border rounded-md focus:ring-2 focus:ring-banking-primary focus:outline-none text-sm text-text-primary bg-white"
       />

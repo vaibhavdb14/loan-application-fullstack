@@ -49,6 +49,32 @@ export const createApplication = async (
   res
 ) => {
   try {
+    const requiredFields = [
+      ["applicantDetails.fullName", req.body.applicantDetails?.fullName],
+      ["applicantDetails.dateOfBirth", req.body.applicantDetails?.dateOfBirth],
+      ["applicantDetails.fatherName", req.body.applicantDetails?.fatherName],
+      ["applicantDetails.panNumber", req.body.applicantDetails?.panNumber],
+      ["applicantDetails.aadhaarNumber", req.body.applicantDetails?.aadhaarNumber],
+      ["applicantDetails.occupation", req.body.applicantDetails?.occupation],
+      ["applicantDetails.employer", req.body.applicantDetails?.employer],
+      ["applicantDetails.designation", req.body.applicantDetails?.designation],
+      ["applicantDetails.monthlyIncome", req.body.applicantDetails?.monthlyIncome],
+      ["applicantDetails.address", req.body.applicantDetails?.address],
+      ["loanDetails.loanAmount", req.body.loanDetails?.loanAmount],
+      ["loanDetails.loanType", req.body.loanDetails?.loanType],
+      ["loanDetails.tenureMonths", req.body.loanDetails?.tenureMonths],
+    ];
+    const missingField = requiredFields.find(
+      ([, value]) => value === undefined || value === null || String(value).trim() === ""
+    );
+
+    if (missingField) {
+      return res.status(400).json({
+        success: false,
+        message: `${missingField[0]} is required`,
+      });
+    }
+
     const application =
       await FinalApplication.create(
         req.body
