@@ -167,21 +167,29 @@ export const updateApplication = async (
 ) => {
   try {
     const { id } = req.params;
+    const updateFields = {};
+
+    if (req.body.applicantDetails !== undefined) {
+      updateFields.applicantDetails = req.body.applicantDetails;
+    }
+
+    if (req.body.financialDetails !== undefined) {
+      updateFields.financialDetails = req.body.financialDetails;
+    }
+
+    if (req.body.loanDetails !== undefined) {
+      updateFields.loanDetails = req.body.loanDetails;
+    }
+
+    if (req.body.processingStatus !== undefined) {
+      updateFields.processingStatus = req.body.processingStatus;
+    }
 
     const application =
       await FinalApplication.findByIdAndUpdate(
         id,
         {
-          $set: {
-            applicantDetails:
-              req.body.applicantDetails,
-
-            financialDetails:
-              req.body.financialDetails,
-
-            loanDetails:
-              req.body.loanDetails,
-          },
+          $set: updateFields,
         },
         {
           new: true,
