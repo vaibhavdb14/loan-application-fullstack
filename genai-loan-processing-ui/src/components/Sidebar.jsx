@@ -21,7 +21,6 @@ const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
     { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { name: "File New Application", path: "/new", icon: <FilePlus size={20} /> },
     { name: "Applications", path: "/applications", icon: <FolderOpen size={20} /> },
-    { name: "Digital Profile", path: "/digital-profile", icon: <IdCard size={20} /> },
     { name: "Help", path: "/help", icon: <HelpCircle size={20} /> },
     { name: "Policy / Rules", path: "/policy", icon: <ShieldAlert size={20} /> },
   ];

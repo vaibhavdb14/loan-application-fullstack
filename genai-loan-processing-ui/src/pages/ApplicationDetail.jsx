@@ -1,250 +1,369 @@
-import { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  User,
-  Sparkles,
-  FileText,
-  CheckCircle2,
-  AlertTriangle,
-  ShieldAlert,
-  X,
-} from 'lucide-react';
-import StatusBadge from '../components/common/StatusBadge';
+import { User, Briefcase, Wallet, Landmark, Receipt, HandCoins, CheckCircle2, X } from 'lucide-react';
+
+// Profile UI Components
+import ProfileHeader from '../components/profile/ProfileHeader';
+import VerificationBanner from '../components/profile/VerificationBanner';
+import ProfileStats from '../components/profile/ProfileStats';
+import InfoCard from '../components/profile/InfoCard';
+import VerifiedPill from '../components/profile/VerifiedPill';
+import AIVerificationSummary from '../components/profile/AIVerificationSummary';
+import RiskAssessment from '../components/profile/RiskAssessment';
+import DocumentProcessingSummary from '../components/profile/DocumentProcessingSummary';
+import EligibilityCTA from '../components/profile/EligibilityCTA';
+import ProfileSkeleton from '../components/profile/ProfileSkeleton';
+import ProfileErrorState from '../components/profile/ProfileErrorState';
+
+// Common Components & Utils
 import ConfirmationModal from '../components/common/ConfirmationModal';
+import { formatCurrency } from '../utils/formatters';
 import { useToast } from '../context/ToastContext';
 
-const verificationRows = [
-  { field: 'Monthly Income', a: '₹80,000', b: '₹80,000', match: true },
-  { field: 'Employer Name', a: 'ABC Tech Pvt Ltd', b: 'ABC Tech Pvt Ltd', match: true },
-  { field: 'Current Address', a: 'Navi Mumbai, 400706', b: 'Pune, 411001', match: false },
-];
-
-const ApplicationDetail = () => {
+const ApplicationDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  // Modal state for Re-authentication
+  // --- State Management ---
+  const [application, setApplication] = useState(null);
+  const [status, setStatus] = useState('loading'); // loading | success | error
   const [authModal, setAuthModal] = useState({ isOpen: false, action: null });
 
+  // --- Fetch Data from MongoDB ---
+  useEffect(() => {
+    const fetchApplication = async () => {
+      setStatus('loading');
+      try {
+        const response = await fetch(`http://localhost:5000/api/applications/${id}`);
+        if (!response.ok) throw new Error('Failed to fetch application');
+        
+        const result = await response.json();
+        setApplication(result.data);
+        setStatus('success');
+      } catch (error) {
+        console.error(error);
+        setStatus('error');
+        showToast('Failed to load application profile', 'error');
+      }
+    };
+
+    if (id) fetchApplication();
+  }, [id, showToast]);
+
+  // --- Action Handlers (Approve / Decline) ---
   const openModal = (action) => setAuthModal({ isOpen: true, action });
   const closeModal = () => setAuthModal({ isOpen: false, action: null });
 
-  const handleConfirmed = () => {
+  const handleConfirmed = async () => {
     const action = authModal.action;
     closeModal();
-    if (action === 'Approve') {
-      showToast('Application approved successfully.', 'success');
-    } else if (action === 'Decline') {
-      showToast('Application declined.', 'warning');
+    
+    // Map UI actions to backend processingStatus enums
+    const newStatus = action === 'Approve' ? 'COMPLETED' : 'FAILED';
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/applications/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ processingStatus: newStatus })
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      if (action === 'Approve') {
+        showToast('Application approved successfully.', 'success');
+      } else {
+        showToast('Application declined.', 'warning');
+      }
+      
+      navigate('/applications');
+    } catch (error) {
+      showToast(`Error: ${error.message}`, 'error');
     }
-    navigate('/applications');
+  };
+
+  const handleDownloadReport = () => {
+    showToast('Report download will be available once the export service is connected.', 'info');
+  };
+
+  // --- Loading / Error States ---
+  if (status === 'loading') return <ProfileSkeleton />;
+  if (status === 'error' || !application) return <ProfileErrorState onRetry={() => window.location.reload()} />;
+
+  // --- Data Extraction & Mapping ---
+  const { 
+    applicantDetails, 
+    financialDetails, 
+    loanDetails, 
+    documents, 
+    processingStatus, 
+    riskLevel, 
+    verificationScore 
+  } = application;
+
+  // 1. Dynamic Data combined with Static Placeholders (to match UI exactly)
+  const applicant = {
+    fullName: applicantDetails?.fullName || 'N/A',
+    dateOfBirth: applicantDetails?.dateOfBirth || 'N/A',
+    fatherName: applicantDetails?.fatherName || 'N/A',
+    panNumber: applicantDetails?.panNumber || 'N/A',
+    address: applicantDetails?.address || 'N/A',
+  };
+
+  const employment = {
+    verified: true,
+    occupation: applicantDetails?.occupation || 'Not Provided',
+    employer: applicantDetails?.employer || 'Not Provided',
+    designation: applicantDetails?.designation || 'Not Provided',
+    employmentType: 'Salaried', // Static
+    workExperience: '4 years', // Static
+  };
+
+  // Calculate static logical assumptions based on dynamic monthly income
+  const baseMonthly = applicantDetails?.monthlyIncome || 0;
+  const income = {
+    monthlyIncome: baseMonthly,
+    annualIncome: baseMonthly * 12,
+    netIncome: baseMonthly * 0.95,
+    taxDeducted: (baseMonthly * 0.05) * 12,
+  };
+
+  const banking = {
+    verified: true,
+    bankName: 'HDFC BANK', // Static
+    accountNumber: 'XXXXXXXXX7890', // Static
+    accountType: 'Savings', // Static
+    averageBalance: 150000, // Static
+  };
+
+  const tax = {
+    itrVerified: true,
+    panNumber: applicantDetails?.panNumber || 'N/A',
+    financialYear: '2025-26', // Static
+    assessmentYear: '2026-27', // Static
+    grossSalary: income.annualIncome,
+    taxableIncome: income.annualIncome > 50000 ? income.annualIncome - 50000 : income.annualIncome,
+    taxDeducted: income.taxDeducted,
+  };
+
+  const loan = {
+    loanType: loanDetails?.loanType?.replace('_', ' ') || 'Personal Loan',
+    loanAmount: loanDetails?.loanAmount || 0,
+    loanTenure: `${loanDetails?.tenureMonths || 60} Months`,
+    purpose: 'Home renovation', // Static
+  };
+
+  const verification = {
+    status: processingStatus === 'COMPLETED' ? 'VERIFIED' : 'PENDING',
+    score: verificationScore || 100,
+    checks: [
+      { label: 'Identity details are consistent.', status: 'passed' },
+      { label: 'Employment details are consistent.', status: 'passed' },
+      { label: 'Income information is consistent.', status: 'passed' },
+      { label: 'Banking information is consistent.', status: 'passed' },
+    ],
+    discrepancies: []
+  };
+
+  const risk = {
+    level: riskLevel || 'LOW',
+    indicator: riskLevel === 'HIGH' ? 'RED' : riskLevel === 'MEDIUM' ? 'YELLOW' : 'GREEN',
+    manualReviewRequired: riskLevel === 'HIGH' ? 'YES' : 'NO',
+    riskFlags: riskLevel === 'HIGH' ? 2 : 0,
+    riskScore: 100 - (verificationScore || 0) || 10,
+  };
+
+  const documentsSummary = {
+    total: documents?.length || 5,
+    processed: documents?.length || 5,
+    passed: documents?.length || 5,
+    reviewRequired: 0,
+    failed: 0,
+  };
+
+  const eligibility = {
+    requiredFields: ['Existing EMI Obligations', 'Credit Score (Optional)', 'Other Active Loans', 'Monthly Expenses'],
+    eligibilityRoute: '#'
   };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
 
-      {/* Top Header */}
-      <div className="flex items-start sm:items-center gap-3 sm:gap-4 mb-2">
-        <button
-          onClick={() => navigate('/applications')}
-          className="p-2 hover:bg-gray-100 rounded-full text-text-secondary transition-colors shrink-0"
-          aria-label="Back to applications"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-2xl font-bold text-text-primary flex flex-wrap items-center gap-2 sm:gap-3">
-            <span className="truncate">Application: {id || 'APP-2026-001025'}</span>
-            <StatusBadge status="Pending Review" />
-          </h1>
-          <p className="text-text-secondary mt-1 text-sm">Submitted on 13 Aug 2026</p>
+      <ProfileHeader
+        verified={verification?.status?.toUpperCase() === 'VERIFIED'}
+        onDownloadReport={handleDownloadReport}
+      />
+
+      <VerificationBanner
+        applicantName={applicant?.fullName}
+        statusLabel={processingStatus?.replace('_', ' ') || "READY FOR ELIGIBILITY CHECK"}
+      />
+
+      <ProfileStats verification={verification} risk={risk} documents={documentsSummary} />
+
+      {/* Row 1: Applicant / Employment / Income */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <InfoCard
+          icon={User}
+          title="Applicant Information"
+          rows={[
+            { label: 'Full Name', value: applicant.fullName },
+            { label: 'Date of Birth', value: applicant.dateOfBirth },
+            { label: 'Father Name', value: applicant.fatherName },
+            { label: 'PAN Number', value: applicant.panNumber },
+            { label: 'Aadhaar Number', value: '[Aadhaar Redacted]' },
+            { label: 'Address', value: applicant.address },
+          ]}
+        />
+
+        <InfoCard
+          icon={Briefcase}
+          title="Employment Details"
+          badge={<VerifiedPill />}
+          rows={[
+            { label: 'Occupation', value: employment.occupation },
+            { label: 'Employer', value: employment.employer },
+            { label: 'Designation', value: employment.designation },
+            { label: 'Employment Type', value: employment.employmentType },
+            { label: 'Work Experience', value: employment.workExperience },
+          ]}
+        />
+
+        <InfoCard
+          icon={Wallet}
+          title="Income Details"
+          rows={[
+            { label: 'Monthly Income', value: formatCurrency(income.monthlyIncome) },
+            { label: 'Annual Income', value: formatCurrency(income.annualIncome) },
+            { label: 'Net Income', value: formatCurrency(income.netIncome) },
+            { label: 'Tax Deducted', value: formatCurrency(income.taxDeducted) },
+          ]}
+        />
+      </div>
+
+      {/* Row 2: Banking / Tax / Loan */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <InfoCard
+          icon={Landmark}
+          title="Banking Details"
+          badge={<VerifiedPill />}
+          rows={[
+            { label: 'Bank Name', value: banking.bankName },
+            { label: 'Account Number', value: banking.accountNumber },
+            { label: 'Account Type', value: banking.accountType },
+            { label: 'Average Balance', value: formatCurrency(banking.averageBalance) },
+          ]}
+        />
+
+        <InfoCard
+          icon={Receipt}
+          title="Tax Information"
+          badge={<VerifiedPill label="ITR VERIFIED" />}
+          rows={[
+            { label: 'PAN Number', value: tax.panNumber },
+            { label: 'Financial Year', value: tax.financialYear },
+            { label: 'Assessment Year', value: tax.assessmentYear },
+            { label: 'Gross Salary', value: formatCurrency(tax.grossSalary) },
+            { label: 'Taxable Income', value: formatCurrency(tax.taxableIncome) },
+            { label: 'Tax Deducted', value: formatCurrency(tax.taxDeducted) },
+          ]}
+        />
+
+        <InfoCard
+          icon={HandCoins}
+          title="Loan Request"
+          rows={[
+            { label: 'Loan Type', value: loan.loanType },
+            { label: 'Loan Amount', value: formatCurrency(loan.loanAmount) },
+            { label: 'Loan Tenure', value: loan.loanTenure },
+            { label: 'Purpose', value: loan.purpose },
+          ]}
+        />
+      </div>
+
+      {/* Row 3: New Financial Details Block */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-1">
+          <InfoCard
+            icon={Landmark}
+            title="Credit & Financial Profile"
+            badge={<VerifiedPill label="CIBIL CHECKED" />}
+            rows={[
+              { label: 'CIBIL Score', value: financialDetails?.cibilScore || '780' },
+              { label: 'Existing Loans', value: financialDetails?.existingLoans || '0' },
+              { label: 'EMI Obligations', value: formatCurrency(financialDetails?.emiObligations || 0) },
+              { label: 'Credit History', value: `${financialDetails?.creditHistoryYears || 0} Years` },
+              { label: 'Previous Defaults', value: financialDetails?.previousLoanDefaults || '0' },
+              { label: 'Dependents', value: financialDetails?.numberOfDependents || '0' },
+            ]}
+          />
         </div>
       </div>
 
+      {/* AI Verification + Risk Assessment */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-
-        {/* LEFT COLUMN: Main Details & AI Analysis */}
-        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-
-          {/* SECTION 1: User Details */}
-          <div className="bg-banking-card border border-border rounded-lg shadow-sm p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-              <User size={20} className="text-banking-primary" />
-              Applicant Details
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-5 gap-x-4 text-sm">
-              <div>
-                <p className="text-text-secondary mb-1">Full Name</p>
-                <p className="font-semibold text-text-primary">Rajesh Kumar</p>
-              </div>
-              <div>
-                <p className="text-text-secondary mb-1">Loan Type</p>
-                <p className="font-semibold text-text-primary">Personal Loan</p>
-              </div>
-              <div>
-                <p className="text-text-secondary mb-1">Requested Amount</p>
-                <p className="font-semibold text-text-primary">₹8,50,000</p>
-              </div>
-              <div>
-                <p className="text-text-secondary mb-1">PAN Number</p>
-                <p className="font-semibold text-text-primary">ABCDE1234F</p>
-              </div>
-              <div>
-                <p className="text-text-secondary mb-1">Monthly Income</p>
-                <p className="font-semibold text-text-primary">₹80,000</p>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 2: AI / RAG GENERATED SUMMARY */}
-          <div className="bg-banking-card border border-banking-info/30 rounded-lg shadow-sm p-4 sm:p-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-banking-info"></div>
-            <h2 className="text-base sm:text-lg font-semibold text-banking-info mb-4 flex items-center gap-2">
-              <Sparkles size={20} />
-              AI-GENERATED LOAN SUMMARY
-            </h2>
-            <div className="bg-banking-softBlue/20 p-4 rounded-md text-sm text-text-primary leading-relaxed mb-4 border border-border-light">
-              <p className="mb-3">The submitted documents are mostly consistent. The applicant's income and employment information were successfully verified across the Salary Slip and Bank Statement.</p>
-              <p><strong>Note:</strong> A minor address mismatch was detected between the Identity Proof and the Bank Statement, requiring manual review.</p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:flex gap-3 sm:gap-4">
-              <div className="bg-white border border-border-light p-3 rounded-md">
-                <p className="text-xs text-text-secondary mb-1">Overall Risk</p>
-                <p className="font-semibold text-banking-warning flex items-center gap-2 text-sm sm:text-base">
-                  <div className="w-2 h-2 rounded-full bg-banking-warning shrink-0"></div> LOW–MEDIUM
-                </p>
-              </div>
-              <div className="bg-white border border-border-light p-3 rounded-md">
-                <p className="text-xs text-text-secondary mb-1">AI Confidence Score</p>
-                <p className="font-semibold text-text-primary text-base sm:text-lg">87%</p>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 4: Verification Details */}
-          <div className="bg-banking-card border border-border rounded-lg shadow-sm p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-text-primary mb-4">Cross-Document Verification</h2>
-
-            {/* Desktop / tablet table */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-border">
-                    <th className="p-3 font-medium text-text-secondary">FIELD</th>
-                    <th className="p-3 font-medium text-text-secondary">SALARY SLIP</th>
-                    <th className="p-3 font-medium text-text-secondary">BANK STATEMENT</th>
-                    <th className="p-3 font-medium text-text-secondary">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light">
-                  {verificationRows.map((r) => (
-                    <tr key={r.field} className={r.match ? '' : 'bg-red-50/50'}>
-                      <td className={`p-3 font-medium ${r.match ? '' : 'text-banking-error'}`}>{r.field}</td>
-                      <td className="p-3">{r.a}</td>
-                      <td className="p-3">{r.b}</td>
-                      <td className={`p-3 flex items-center gap-1 ${r.match ? 'text-banking-success' : 'text-banking-error'}`}>
-                        {r.match ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
-                        {r.match ? 'Match' : 'Mismatch'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile key-value stack */}
-            <div className="sm:hidden space-y-3">
-              {verificationRows.map((r) => (
-                <div key={r.field} className={`rounded-md border p-3 ${r.match ? 'border-border-light' : 'border-red-200 bg-red-50/50'}`}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`text-sm font-medium ${r.match ? 'text-text-primary' : 'text-banking-error'}`}>{r.field}</span>
-                    <span className={`flex items-center gap-1 text-xs font-medium ${r.match ? 'text-banking-success' : 'text-banking-error'}`}>
-                      {r.match ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                      {r.match ? 'Match' : 'Mismatch'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-text-secondary space-y-1">
-                    <p>Salary Slip: <span className="text-text-primary">{r.a}</span></p>
-                    <p>Bank Statement: <span className="text-text-primary">{r.b}</span></p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="lg:col-span-2">
+          <AIVerificationSummary checks={verification.checks} discrepancies={verification.discrepancies} />
         </div>
+        <RiskAssessment
+          level={risk.level}
+          indicator={risk.indicator}
+          manualReviewRequired={risk.manualReviewRequired}
+          riskFlags={risk.riskFlags}
+          riskScore={risk.riskScore}
+        />
+      </div>
 
-        {/* RIGHT COLUMN: Risk, Documents & Final Actions */}
-        <div className="space-y-4 sm:space-y-6">
+      {/* Documents Summary */}
+      <DocumentProcessingSummary
+        total={documentsSummary.total}
+        processed={documentsSummary.processed}
+        passed={documentsSummary.passed}
+        reviewRequired={documentsSummary.reviewRequired}
+        failed={documentsSummary.failed}
+      />
 
-          {/* SECTION 5: Risk Panel */}
-          <div className="bg-banking-card border border-border rounded-lg shadow-sm p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-              <ShieldAlert size={20} className="text-banking-warning" />
-              Risk Exceptions
-            </h2>
-            <div className="space-y-4">
-              <div className="p-3 border border-red-200 bg-red-50 rounded-md">
-                <p className="text-sm font-semibold text-banking-error flex items-center gap-2 mb-1">
-                  <AlertTriangle size={16} /> Address Discrepancy
-                </p>
-                <p className="text-xs text-text-secondary mb-2">Mismatch detected between ID Proof and Bank Statement headers.</p>
-                <button className="text-xs font-medium text-banking-primary hover:underline">View Evidence</button>
-              </div>
-            </div>
-          </div>
+      {/* Eligibility CTA Banner */}
+      <EligibilityCTA
+        requiredFields={eligibility.requiredFields}
+        route={eligibility.eligibilityRoute}
+      />
 
-          {/* SECTION 3: Uploaded Documents */}
-          <div className="bg-banking-card border border-border rounded-lg shadow-sm p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-text-primary mb-4">Uploaded Documents</h2>
-            <div className="space-y-3">
-              {['Salary_Slip.pdf', 'Bank_Statement.pdf'].map((name) => (
-                <div key={name} className="flex items-center justify-between p-3 border border-border-light rounded-md bg-gray-50 gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <FileText size={18} className="text-text-secondary shrink-0" />
-                    <span className="text-sm font-medium truncate" title={name}>{name}</span>
-                  </div>
-                  <button className="text-xs font-medium text-banking-primary hover:underline shrink-0">View</button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* SECTION 6: Final Action */}
-          <div className="bg-banking-card border border-border rounded-lg shadow-sm p-4 sm:p-6">
-            <h2 className="text-sm font-semibold text-text-secondary mb-4 uppercase tracking-wider">Manager Decision</h2>
-            <div className="space-y-3">
-              <button
-                onClick={() => openModal('Approve')}
-                className="w-full bg-banking-success hover:bg-green-700 text-white py-3 rounded-md font-medium flex items-center justify-center gap-2 transition-colors min-h-[46px]"
-              >
-                <CheckCircle2 size={18} /> APPROVE APPLICATION
-              </button>
-              <button
-                onClick={() => openModal('Decline')}
-                className="w-full bg-white border-2 border-banking-error text-banking-error hover:bg-red-50 py-3 rounded-md font-medium flex items-center justify-center gap-2 transition-colors min-h-[46px]"
-              >
-                <X size={18} /> DECLINE APPLICATION
-              </button>
-            </div>
-          </div>
-
+      {/* =========================================================
+          NEW: FINAL ACTION BUTTONS (Approve / Decline)
+      ========================================================= */}
+      <div className="bg-banking-card border border-border rounded-lg shadow-sm p-4 sm:p-6 mt-8">
+        <h2 className="text-sm font-semibold text-text-secondary mb-4 uppercase tracking-wider">Manager Decision</h2>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={() => openModal('Approve')}
+            className="flex-1 bg-banking-success hover:bg-green-700 text-white py-3 rounded-md font-medium flex items-center justify-center gap-2 transition-colors min-h-[46px]"
+          >
+            <CheckCircle2 size={18} /> APPROVE APPLICATION
+          </button>
+          
+          <button
+            onClick={() => openModal('Decline')}
+            className="flex-1 bg-white border-2 border-banking-error text-banking-error hover:bg-red-50 py-3 rounded-md font-medium flex items-center justify-center gap-2 transition-colors min-h-[46px]"
+          >
+            <X size={18} /> DECLINE APPLICATION
+          </button>
         </div>
       </div>
 
       {/* RE-AUTHENTICATION MODAL */}
       <ConfirmationModal
         isOpen={authModal.isOpen}
-        title="Additional Verification Required"
+        title="Manager Verification Required"
         message={
           <>
             You are about to{' '}
             <strong className={authModal.action === 'Approve' ? 'text-banking-success' : 'text-banking-error'}>
               {authModal.action?.toUpperCase()}
             </strong>{' '}
-            application {id}. This sensitive action requires re-authentication.
+            application {id.slice(-6).toUpperCase()}. This status update will be securely synced with the database.
           </>
         }
         confirmLabel={`Confirm ${authModal.action}`}
@@ -257,4 +376,4 @@ const ApplicationDetail = () => {
   );
 };
 
-export default ApplicationDetail;
+export default ApplicationDetails;

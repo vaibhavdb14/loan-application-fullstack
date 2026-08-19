@@ -10,7 +10,7 @@ import { Gauge, ArrowLeft } from 'lucide-react';
  */
 const Eligibility = () => {
   const navigate = useNavigate();
-  const { applicationId } = useParams();
+  const { applicationId } = useParams() || {};
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
@@ -18,7 +18,7 @@ const Eligibility = () => {
         onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-6 text-sm font-medium"
       >
-        <ArrowLeft size={16} /> Back to Digital Profile
+        <ArrowLeft size={16} /> Back to Application
       </button>
 
       <div className="bg-banking-card border border-border rounded-lg shadow-sm p-8 sm:p-12 flex flex-col items-center text-center">
@@ -27,8 +27,7 @@ const Eligibility = () => {
         </div>
         <h1 className="text-lg sm:text-xl font-semibold text-text-primary mb-2">Eligibility Check</h1>
         <p className="text-sm text-text-secondary max-w-sm">
-          {applicationId ? `Eligibility assessment for ${applicationId} ` : 'Eligibility assessment '}
-          is coming soon. Your verified Digital Profile is ready to be used as the input for this stage
+          Eligibility assessment is coming soon. Your verified Digital Profile is ready to be used as the input for this stage
           once the eligibility engine is connected.
         </p>
       </div>

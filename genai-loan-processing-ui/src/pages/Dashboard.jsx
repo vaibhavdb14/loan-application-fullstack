@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FilePlus,
@@ -11,24 +11,94 @@ import {
 } from 'lucide-react';
 import StatusBadge from '../components/common/StatusBadge';
 
-// Mock data to populate the dashboard table
-const recentApplications = [
-  { id: 'APP-2026-001024', name: 'Arjun Mehta', type: 'Home Loan', amount: '₹75,00,000', status: 'Pending', date: '12 Aug 2026' },
-  { id: 'APP-2026-001023', name: 'Priya Sharma', type: 'Personal Loan', amount: '₹5,00,000', status: 'Approved', date: '11 Aug 2026' },
-  { id: 'APP-2026-001022', name: 'Rohan Desai', type: 'Business Loan', amount: '₹1,50,00,000', status: 'Declined', date: '10 Aug 2026' },
-  { id: 'APP-2026-001021', name: 'Neha Gupta', type: 'Education Loan', amount: '₹20,00,000', status: 'Pending', date: '10 Aug 2026' },
-  { id: 'APP-2026-001020', name: 'Vikram Singh', type: 'Vehicle Loan', amount: '₹12,50,000', status: 'Approved', date: '09 Aug 2026' },
-];
+const normalizeLoanType = (value) => {
+  if (!value) return 'N/A';
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const formatCurrency = (value) => {
+  const numericValue = Number(value || 0);
+  return `₹${numericValue.toLocaleString('en-IN')}`;
+};
+
+const normalizeStatus = (status) => {
+  switch (status) {
+    case 'COMPLETED':
+      return 'Approved';
+    case 'FAILED':
+      return 'Declined';
+    case 'PROCESSING':
+      return 'Pending Review';
+    case 'PENDING':
+    default:
+      return 'Pending';
+  }
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const stats = [
-    { label: 'Total Applications', value: '1,248', icon: LayoutList, iconColor: 'text-text-secondary', borderColor: '' },
-    { label: 'Pending Review', value: '320', icon: Clock, iconColor: 'text-banking-warning', borderColor: 'border-b-banking-warning' },
-    { label: 'Approved', value: '814', icon: CheckCircle2, iconColor: 'text-banking-success', borderColor: 'border-b-banking-success' },
-    { label: 'Declined', value: '114', icon: XCircle, iconColor: 'text-banking-error', borderColor: 'border-b-banking-error' },
-  ];
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/applications');
+        if (!response.ok) {
+          throw new Error('Failed to fetch applications');
+        }
+
+        const result = await response.json();
+        const mappedApplications = (result.data || []).map((application) => {
+          const applicant = application.applicantDetails || {};
+          const loan = application.loanDetails || {};
+          const status = normalizeStatus(application.processingStatus);
+          const createdAt = application.createdAt ? new Date(application.createdAt) : new Date();
+
+          return {
+            _id: application._id || null,
+            id: application._id ? `APP-${String(application._id).slice(-6).toUpperCase()}` : 'APP-N/A',
+            name: applicant.fullName || 'Unnamed Applicant',
+            type: normalizeLoanType(loan.loanType),
+            amount: formatCurrency(loan.loanAmount),
+            status,
+            date: createdAt.toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            }),
+          };
+        });
+
+        setApplications(mappedApplications);
+      } catch (error) {
+        console.error('Dashboard fetch failed:', error);
+        setApplications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
+
+  const stats = useMemo(() => {
+    const total = applications.length;
+    const pending = applications.filter((app) => app.status === 'Pending' || app.status === 'Pending Review').length;
+    const approved = applications.filter((app) => app.status === 'Approved').length;
+    const declined = applications.filter((app) => app.status === 'Declined').length;
+
+    return [
+      { label: 'Total Applications', value: total.toLocaleString('en-IN'), icon: LayoutList, iconColor: 'text-text-secondary', borderColor: '' },
+      { label: 'Pending Review', value: pending.toLocaleString('en-IN'), icon: Clock, iconColor: 'text-banking-warning', borderColor: 'border-b-banking-warning' },
+      { label: 'Approved', value: approved.toLocaleString('en-IN'), icon: CheckCircle2, iconColor: 'text-banking-success', borderColor: 'border-b-banking-success' },
+      { label: 'Declined', value: declined.toLocaleString('en-IN'), icon: XCircle, iconColor: 'text-banking-error', borderColor: 'border-b-banking-error' },
+    ];
+  }, [applications]);
+
+  const recentApplications = applications.slice(0, 5);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto">
@@ -81,64 +151,74 @@ const Dashboard = () => {
         </div>
 
         {/* Desktop / tablet table */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-border-light bg-gray-50/50">
-                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Application No.</th>
-                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Applicant Name</th>
-                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Loan Type</th>
-                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light text-sm">
-              {recentApplications.map((app) => (
-                <tr key={app.id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-6 py-4 font-medium text-text-primary">{app.id}</td>
-                  <td className="px-6 py-4 text-text-secondary">{app.name}</td>
-                  <td className="px-6 py-4 text-text-secondary">{app.type}</td>
-                  <td className="px-6 py-4 font-medium text-text-primary">{app.amount}</td>
-                  <td className="px-6 py-4 text-text-muted">{app.date}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={app.status} />
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="text-banking-primary font-medium text-sm hover:underline opacity-0 group-hover:opacity-100 transition-opacity">
-                      Review
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="p-6 text-sm text-text-secondary">Loading recent applications...</div>
+        ) : recentApplications.length === 0 ? (
+          <div className="p-6 text-sm text-text-secondary">No applications found.</div>
+        ) : (
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border-light bg-gray-50/50">
+                    <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Application No.</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Applicant Name</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Loan Type</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-text-secondary uppercase tracking-wider text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-light text-sm">
+                  {recentApplications.map((app) => (
+                    <tr key={app._id || app.id} className="hover:bg-gray-50/50 transition-colors group">
+                      <td className="px-6 py-4 font-medium text-text-primary">{app.id}</td>
+                      <td className="px-6 py-4 text-text-secondary">{app.name}</td>
+                      <td className="px-6 py-4 text-text-secondary">{app.type}</td>
+                      <td className="px-6 py-4 font-medium text-text-primary">{app.amount}</td>
+                      <td className="px-6 py-4 text-text-muted">{app.date}</td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={app.status} />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => app._id && navigate(`/applications/${app._id}`)}
+                          className="text-banking-primary font-medium text-sm hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        {/* Mobile stacked cards */}
-        <div className="md:hidden divide-y divide-border-light">
-          {recentApplications.map((app) => (
-            <button
-              key={app.id}
-              onClick={() => navigate(`/applications/${app.id}`)}
-              className="w-full text-left p-4 flex items-center justify-between gap-3 active:bg-gray-50"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-text-primary text-sm truncate">{app.name}</p>
-                <p className="text-xs text-text-muted truncate">{app.id} · {app.type}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <StatusBadge status={app.status} size="sm" />
-                  <span className="text-xs text-text-muted">{app.date}</span>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-sm font-semibold text-text-primary">{app.amount}</span>
-                <ChevronRight size={16} className="text-text-muted" />
-              </div>
-            </button>
-          ))}
-        </div>
+            <div className="md:hidden divide-y divide-border-light">
+              {recentApplications.map((app) => (
+                <button
+                  key={app._id || app.id}
+                  onClick={() => app._id && navigate(`/applications/${app._id}`)}
+                  className="w-full text-left p-4 flex items-center justify-between gap-3 active:bg-gray-50"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-text-primary text-sm truncate">{app.name}</p>
+                    <p className="text-xs text-text-muted truncate">{app.id} · {app.type}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <StatusBadge status={app.status} size="sm" />
+                      <span className="text-xs text-text-muted">{app.date}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-sm font-semibold text-text-primary">{app.amount}</span>
+                    <ChevronRight size={16} className="text-text-muted" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
     </div>
